@@ -1,0 +1,6 @@
+kohonen/data/*
+shallow_nn/img/*
+*.m~
+*.~m
+.vscode/
+__pycache__
