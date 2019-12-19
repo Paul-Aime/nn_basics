@@ -38,7 +38,7 @@ def som(X, d1, d2, epoch_max=100, lr0=1, sigma0=.3):
             BMU_idx_d = np.argmin(dist)
             BMU_idx_a = np.argmax(y)
             # assert BMU_idx_d == BMU_idx_a # TODO Why not true ?
-            BMU_idx = BMU_idx_a
+            BMU_idx = BMU_idx_d
             BMU_grid_idx = lin2grid(BMU_idx, d2)
 
             # Compute its distance with the input sample
@@ -73,7 +73,8 @@ def map_input_samples(X, W, d1, d2):
     X = (X - X.mean(axis=0))/X.var(axis=0)
 
     # Get neurons grid coordinates
-    neurons_grid_idxs = np.array([lin2grid(i, d2) for i in range(d1*d2)])
+    neurons_grid_idxs = np.array([lin2grid(i, d2) for i in range(d1*d2)],
+                                 dtype=np.double)
 
     # Prepare output
     X_grid_idxs = np.zeros((n_samples, 2))
@@ -82,10 +83,14 @@ def map_input_samples(X, W, d1, d2):
 
         # Compute activation of neurons for each sample
         y = np.matmul(W.T, x)  # shape (d1*d2, )
+        y = np.abs(y)
 
         # Compute x position on the grid, by linear combination
-        x_grid_idx = np.sum(np.multiply(neurons_grid_idxs, repmat(y, 2, 1).T))
-        x_grid_idx /= y.sum()
+        # x_grid_idx = np.mean(np.multiply(neurons_grid_idxs, repmat(y, 2, 1).T))
+        # x_grid_idx /= y.sum()
+
+        # Compute x position on the grid, by hard assignement
+        x_grid_idx = neurons_grid_idxs[np.argmax(y)]
 
         # Register output
         X_grid_idxs[i] = x_grid_idx
@@ -109,3 +114,21 @@ def neighbor_coeff(ci, ck, h):
 
 def lin2grid(i, d2):
     return np.array([i//d2, i % d2])
+
+
+def count(X_grid_idxs, Y, d1, d2):
+    n_neurons = d1*d2
+    n_classes = Y.max() + 1
+    X_grid_idxs_class_c = [X_grid_idxs[Y == c] for c in range(n_classes)]
+
+    K = np.array([[sum([(X_grid_idxs_class_c[c] == lin2grid(w, d2))[k].all()  # count number of points
+                        for k in range(len(X_grid_idxs_class_c[c]))])                # assigned to neuron w
+                   for w in range(n_neurons)]
+                  for c in range(n_classes)])
+
+    # K1 = np.array([[sum([(X_grid_idxs[Y == c] == lin2grid(w, d2))[k].all()
+    #                      for k in range(X_grid_idxs[Y == c].shape[0])])
+    #                 for w in range(d1*d2)]
+    #                for c in range(n_classes)])
+
+    return K
